@@ -8,9 +8,6 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'info_screen.dart';
 
-
-final controller = CarouselSliderController();
-
 String? extractYouTubeVideoId(String url) {
   final RegExp regExp = RegExp(r'(https?://(?:www\.)?youtube\.com/shorts/)([a-zA-Z0-9_-]+)');
   final match = regExp.firstMatch(url);
@@ -20,6 +17,9 @@ String? extractYouTubeVideoId(String url) {
   }
   return null;
 }
+
+
+final controller = CarouselSliderController();
 
 class VideoPlayerWidget extends StatefulWidget {
   final String videoUrl;
@@ -74,7 +74,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeState extends State<HomeScreen> {
   final UsuariosProvider _usuariosProvider = UsuariosProvider(); // Instancia para obtener los datos del usuario
   final MultimediaProvider _multimediaProvider = MultimediaProvider(); // Instancia para obtener los datos multimedia
-  String? selectedImageId; // Variable para almacenar el ID de la imagen seleccionada
+  
   List<Map<String, String>> heroImages = [];
   List<String> mediaItems = [];
   List<Map<String, String>> mediaItemsturismo = [];
@@ -90,7 +90,8 @@ class _HomeState extends State<HomeScreen> {
     _obtenerMediaItemsTurismo();
     _obtenerMediaItems();
   }
-
+///////////////////////s0licitudes fetch///////////////////////////////////////////////////
+//////////////////////////s0licitudes fetch///////////////////////////////////////////////////
   Future<void> _fetchUserData() async {
     String? nombre = await _usuariosProvider.obtenerDatosUsuario();
     setState(() {
@@ -119,7 +120,188 @@ class _HomeState extends State<HomeScreen> {
   });
 }
 
- @override
+///////////////////////fin de s0licitudes fetch///////////////////////////////////////////////////
+///////////////////////fin de s0licitudes fetch///////////////////////////////////////////////////
+
+///////////////////////  (Widget a utilizar )////////////////////////////////////////////
+////////////////////////// (Widget a utilizar )//////////////////////////////////////////
+  Widget carrusel() {
+    return CarouselSlider(
+      options: CarouselOptions(
+        viewportFraction: 1,
+        height: 200,
+        enableInfiniteScroll: true,
+        autoPlay: true,
+        autoPlayInterval: const Duration(seconds: 20),
+        autoPlayAnimationDuration: const Duration(seconds: 3),
+        enlargeCenterPage: true,
+      ),
+      items: heroImages.map((imageItem) {
+        String imageId = imageItem['id'] ?? '';  // Obtener el id de la imagen
+        String imageLink = imageItem['link'] ?? '';  // Obtener el link detallado de la imagen
+
+        return GestureDetector(
+          onTap: () {
+            // Navegar a la pantalla de detalles de la imagen y pasar el ID
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ImageDetailScreen(imageId: imageId),
+              ),
+            );
+          },
+          child: Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage(imageLink),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        );
+      }).toList(),  // Convertir a lista de widgets
+    );
+  }
+  // Sección de medios (se mantiene igual)
+  Widget _buildMediaSection() {
+    return Column(
+      children: mediaItems.map((link) {
+        if (link.contains('youtube.com/shorts')) {
+          final videoId = extractYouTubeVideoId(link);
+          if (videoId != null) {
+            return Container(
+              margin: const EdgeInsets.all(8),
+              height: 200,
+              child: VideoPlayerWidget(videoUrl: link),
+            );
+          } else {
+            return const SizedBox.shrink();
+          }
+        } else if (link.endsWith('.mp4')) {
+          return Container(
+            margin: const EdgeInsets.all(8),
+            height: 200,
+            child: VideoPlayerWidget(videoUrl: link),
+          );
+        } else if (link.isNotEmpty) {
+          return Container(
+            margin: const EdgeInsets.all(8),
+            height: 200,
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage(link),
+                fit: BoxFit.cover,
+              ),
+            ),
+          );
+        } else {
+          return const SizedBox.shrink();
+        }
+      }).toList(),
+    );
+  }
+
+  Widget _buildTurismoSection() {
+  return Column(
+    children: mediaItemsturismo.map((item) {
+      final String link = item['link'] ?? '';
+      final String linkdetallado = item['linkdetallado'] ?? '';
+
+      if (link.isNotEmpty && linkdetallado.isNotEmpty) {
+        return GestureDetector(
+          onTap: () {
+            print('Navegar a: $linkdetallado');
+
+            // Aquí decides a qué pantalla navegar según linkdetallado
+            Widget destino;
+            switch (linkdetallado) {
+              case 'CopropiedadScreen':
+                destino = const CiudadescopropiedadScreen();
+                break;
+              case 'HotelHomeScreen':
+                destino = const HotelHomeScreen();
+                break;
+              // Agrega más casos si tienes más pantallas
+              default:
+                destino = const Scaffold(
+                  body: Center(child: Text('Pantalla no encontrada')),
+                );
+            }
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => destino),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.all(8),
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              image: DecorationImage(
+                image: NetworkImage(link),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        );
+      } else {
+        return const SizedBox.shrink();
+      }
+    }).toList(),
+  );
+}
+
+//////////////////////////////Este es el cuerpo de la pantalla donde cambiamos el contenido//////////////
+  Widget _buildBody() {
+    switch (_selectedIndex) {
+      case 0:
+        return Column(
+          children: [
+            // Carrusel (ya está en el AppBar)
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _buildMediaSection(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      case 1:
+        return Column(
+          children: [
+            // Carrusel (ya está en el AppBar)
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _buildTurismoSection(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      case 2:
+        // Aquí puedes agregar la sección para "J.e Abogacia"
+        return const Center(
+          child: Text('J.e Abogacia content goes here'),
+        );
+      default:
+        return Container();
+    }
+  }
+
+///////////////////////   fin de (Widget a utilizar )////////////////////////////////////////////
+////////////////////////// (fin de Widget a utilizar )//////////////////////////////////////////
+
+
+@override
 Widget build(BuildContext context) {
   return SafeArea( // 👈👈👈 Agrega SafeArea para dejar espacio en la parte superior (barra de estado)
     child: Scaffold(
@@ -206,180 +388,4 @@ Widget build(BuildContext context) {
   );
 }
 
-
-  // Carrusel (ya no se encuentra en el body, ahora en el AppBar)
-  Widget carrusel() {
-    return CarouselSlider(
-      options: CarouselOptions(
-        viewportFraction: 1,
-        height: 200,
-        enableInfiniteScroll: true,
-        autoPlay: true,
-        autoPlayInterval: const Duration(seconds: 20),
-        autoPlayAnimationDuration: const Duration(seconds: 3),
-        enlargeCenterPage: true,
-      ),
-      items: heroImages.map((imageItem) {
-        String imageId = imageItem['id'] ?? '';  // Obtener el id de la imagen
-        String imageLink = imageItem['link'] ?? '';  // Obtener el link detallado de la imagen
-
-        return GestureDetector(
-          onTap: () {
-            // Navegar a la pantalla de detalles de la imagen y pasar el ID
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ImageDetailScreen(imageId: imageId),
-              ),
-            );
-          },
-          child: Container(
-            width: double.infinity,
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: NetworkImage(imageLink),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-        );
-      }).toList(),  // Convertir a lista de widgets
-    );
-  }
-
-  // Sección de medios (se mantiene igual)
-  Widget _buildMediaSection() {
-    return Column(
-      children: mediaItems.map((link) {
-        if (link.contains('youtube.com/shorts')) {
-          final videoId = extractYouTubeVideoId(link);
-          if (videoId != null) {
-            return Container(
-              margin: const EdgeInsets.all(8),
-              height: 200,
-              child: VideoPlayerWidget(videoUrl: link),
-            );
-          } else {
-            return const SizedBox.shrink();
-          }
-        } else if (link.endsWith('.mp4')) {
-          return Container(
-            margin: const EdgeInsets.all(8),
-            height: 200,
-            child: VideoPlayerWidget(videoUrl: link),
-          );
-        } else if (link.isNotEmpty) {
-          return Container(
-            margin: const EdgeInsets.all(8),
-            height: 200,
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: NetworkImage(link),
-                fit: BoxFit.cover,
-              ),
-            ),
-          );
-        } else {
-          return const SizedBox.shrink();
-        }
-      }).toList(),
-    );
-  }
-
-Widget _buildTurismoSection() {
-  return Column(
-    children: mediaItemsturismo.map((item) {
-      final String link = item['link'] ?? '';
-      final String linkdetallado = item['linkdetallado'] ?? '';
-
-      if (link.isNotEmpty && linkdetallado.isNotEmpty) {
-        return GestureDetector(
-          onTap: () {
-            print('Navegar a: $linkdetallado');
-
-            // Aquí decides a qué pantalla navegar según linkdetallado
-            Widget destino;
-            switch (linkdetallado) {
-              case 'CopropiedadScreen':
-                destino = const CiudadescopropiedadScreen();
-                break;
-              case 'HotelHomeScreen':
-                destino = const HotelHomeScreen();
-                break;
-              // Agrega más casos si tienes más pantallas
-              default:
-                destino = const Scaffold(
-                  body: Center(child: Text('Pantalla no encontrada')),
-                );
-            }
-
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => destino),
-            );
-          },
-          child: Container(
-            margin: const EdgeInsets.all(8),
-            height: 200,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              image: DecorationImage(
-                image: NetworkImage(link),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-        );
-      } else {
-        return const SizedBox.shrink();
-      }
-    }).toList(),
-  );
-}
-
-
-
-  // Este es el cuerpo de la pantalla donde cambiamos el contenido
-  Widget _buildBody() {
-    switch (_selectedIndex) {
-      case 0:
-        return Column(
-          children: [
-            // Carrusel (ya está en el AppBar)
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _buildMediaSection(),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      case 1:
-        return Column(
-          children: [
-            // Carrusel (ya está en el AppBar)
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _buildTurismoSection(),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      case 2:
-        // Aquí puedes agregar la sección para "J.e Abogacia"
-        return const Center(
-          child: Text('J.e Abogacia content goes here'),
-        );
-      default:
-        return Container();
-    }
-  }
 }

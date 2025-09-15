@@ -66,56 +66,72 @@ class _CopropiedadListScreenState extends State<CopropiedadListScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Copropiedades en ${widget.ciudad}'),
-        backgroundColor: Colors.teal,
-      ),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : error != null
-              ? Center(child: Text('Ocurrió un error:\n$error'))
-              : propiedades.isEmpty
-                  ? const Center(child: Text('No hay copropiedades'))
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(12),
-                      itemCount: propiedades.length,
-                      itemBuilder: (context, index) {
-                        final prop = propiedades[index];
-                        final foto = prop['fotoPrincipal'];
-                        if (foto == null) return const SizedBox();
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => CopropiedadDetailScreen(
-                                  fotos: List<String>.from(prop['fotos']),
-                                  descripcion: prop['descripcion'] ?? '',
-                                ),
-                              ),
-                            );
-                          },
-                          child: Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            clipBehavior: Clip.hardEdge,
-                            child: Image.network(
-                              foto,
-                              height: 200,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        );
-                      },
+
+
+
+
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text('Copropiedades en ${widget.ciudad}'),
+      backgroundColor: Colors.teal,
+    ),
+    body: loading
+        ? const Center(child: CircularProgressIndicator())
+        : error != null
+            ? Center(child: Text('Ocurrió un error:\n$error'))
+            : propiedades.isEmpty
+                ? const Center(child: Text('No hay copropiedades'))
+                : GridView.builder(
+                    padding: const EdgeInsets.all(12),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,            // ✅ Dos columnas
+                      crossAxisSpacing: 12,         // Espacio horizontal entre cards
+                      mainAxisSpacing: 12,          // Espacio vertical entre cards
+                      childAspectRatio: 0.75,       // Ajusta alto/ancho de cada card
                     ),
-    );
-  }
+                    itemCount: propiedades.length,
+                    itemBuilder: (context, index) {
+                      final prop = propiedades[index];
+                      final foto = prop['fotoPrincipal'];
+                      if (foto == null) return const SizedBox();
+
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CopropiedadDetailScreen(
+                                fotos: List<String>.from(prop['fotos']),
+                                descripcion: prop['descripcion'] ?? '',
+                              ),
+                            ),
+                          );
+                        },
+                        child: Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          clipBehavior: Clip.hardEdge,
+                          child: Image.network(
+                            foto,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+  );
 }
+
+}
+
+
+
+
+
+
 
 /// Pantalla de detalle con todas las fotos
 class CopropiedadDetailScreen extends StatelessWidget {

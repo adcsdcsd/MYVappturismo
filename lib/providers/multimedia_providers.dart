@@ -5,6 +5,27 @@ class MultimediaProvider {
   ////////////////////////////////////// Función para obtener las imágenes del carrusel///////////////////////
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////
   
+
+
+Future<String> obtenerImagenLogin() async {
+    final url = Uri.parse('http://corporationservisgroup.somee.com/api/multimedias/1');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        // Aquí asumimos que el API devuelve una URL en el campo 'urlImagen'
+        return data['link']; // Asegúrate de que este campo sea correcto
+      } else {
+        throw Exception('Error al cargar la imagen');
+      }
+    } catch (e) {
+      throw Exception('Error al cargar la imagen');
+    }
+  }
+
+
+
+
   
   Future<List<Map<String, String>>> obtenerCarrusel() async {
     final url = Uri.parse('http://corporationservisgroup.somee.com/api/Multimedias/carrusel');

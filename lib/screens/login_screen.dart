@@ -1,7 +1,6 @@
 import 'package:correa_tours/providers/usuarios_providers.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:correa_tours/providers/multimedia_providers.dart';
 
 import 'package:provider/provider.dart';
 
@@ -16,29 +15,14 @@ class LoginScreenState extends State<LoginScreen> {
   final TextEditingController txtCedula = TextEditingController();
   final TextEditingController txtPassword = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-
-
-  // Método para obtener la URL de la imagen desde la API
-  Future<String> obtenerImagenFondo() async {
-    final url = Uri.parse('http://corporationservisgroup.somee.com/api/multimedias/1');
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        // Aquí asumimos que el API devuelve una URL en el campo 'urlImagen'
-        return data['link']; // Asegúrate de que este campo sea correcto
-      } else {
-        throw Exception('Error al cargar la imagen');
-      }
-    } catch (e) {
-      throw Exception('Error al cargar la imagen');
-    }
-  }
-
+ 
+ 
   @override
   Widget build(BuildContext context) {
     // Aquí obtenemos el LoginProvider desde el context
     final loginProvider = Provider.of<LoginProvider>(context);
+    final Provider1 = Provider.of<MultimediaProvider>(context);
+
 
     return Scaffold(
       body: SizedBox(
@@ -48,7 +32,7 @@ class LoginScreenState extends State<LoginScreen> {
           children: [
             // Usar FutureBuilder para cargar la imagen de fondo
             FutureBuilder<String>(
-              future: obtenerImagenFondo(),  // Llamamos al método para obtener la imagen
+                future: Provider1.obtenerImagenLogin(), // Llamamos al método para obtener la imagen
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator()); // Esperando la imagen

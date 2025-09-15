@@ -19,68 +19,75 @@ String usuarioToJson(List<Usuario> data) {
 }
 
 
-class LoginProvider with ChangeNotifier {
+class LoginProvider extends ChangeNotifier {
+  bool isLoading = false;
+  String errorMessage = '';
+  bool _isLoggedIn = false; // ✅ estado de sesión
+  bool get isLoggedIn => _isLoggedIn;
 
-  bool _isLoading = false;
-  String _errorMessage = '';
+  /// ✅ Cargar la sesión guardada (si existe) al iniciar la app
+  Future<void> loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('userId');
 
-  bool get isLoading => _isLoading;
-  String get errorMessage => _errorMessage;
+    if (userId != null) {
+      _isLoggedIn = true; // hay un usuario guardado, sigue logueado
+    } else {
+      _isLoggedIn = false;
+    }
 
-  set isLoading(bool value) {
-    _isLoading = value;
-    notifyListeners();
+    notifyListeners(); // avisa a los widgets que el estado cambió
   }
 
-  set errorMessage(String message) {
-    _errorMessage = message;
-    notifyListeners();
-  }
-
+  /// ✅ Iniciar sesión y guardar el ID de usuario
   Future<bool> login(String cedula, String password) async {
-    
     isLoading = true;
     errorMessage = '';
 
-    // URL de la API de login (ajusta según tu API)
-    final url = Uri.parse("http://corporationservisgroup.somee.com/api/Usuarios/Login");
+    final url = Uri.parse(
+        "http://corporationservisgroup.somee.com/api/Usuarios/Login");
 
     try {
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
         body: json.encode({
-          "cedula": cedula,  // Enviar la cédula como parámetro
-          "password": password,  // Enviar la contraseña
+          "cedula": cedula,
+          "password": password,
         }),
       );
-      if (response.statusCode == 200) {           
+
+      if (response.statusCode == 200) {
         var decodedResponse = json.decode(response.body);
         var userId = decodedResponse['user']['id'];
+
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setInt('userId', userId);   
-        
+        await prefs.setInt('userId', userId); // ✅ guarda sesión
+
+        _isLoggedIn = true; // ✅ marca como logueado
         isLoading = false;
+        notifyListeners();
         return true;
       } else {
-        // Si las credenciales no son correctas
         isLoading = false;
         errorMessage = 'Cédula o contraseña incorrectos.';
         return false;
       }
     } catch (error) {
-      // Si hay un error en la conexión o en la solicitud
       isLoading = false;
       errorMessage = 'Hubo un problema al intentar conectarse al servidor.';
       return false;
     }
   }
+
+  /// ✅ Cerrar sesión (opcional)
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userId'); // elimina la sesión guardada
+    _isLoggedIn = false;
+    notifyListeners();
+  }
 }
-
-
-
-
-
 
 class UsuariosProvider {
   // Método para obtener los datos del usuario usando el ID

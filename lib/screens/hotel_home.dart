@@ -26,7 +26,6 @@ class _HotelHomeScreenState extends State<HotelHomeScreen> {
 
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  final List<String> _citySuggestions = [];
 
   @override   
   void initState() {
