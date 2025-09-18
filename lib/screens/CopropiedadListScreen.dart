@@ -29,7 +29,8 @@ class _CopropiedadListScreenState extends State<CopropiedadListScreen> {
       final resp = await http.get(url);
       if (resp.statusCode == 200) {
         final List<dynamic> data = json.decode(resp.body);
-
+        print("/////////////////////////////////////////////////////////////////");
+        print(data);
         // Filtramos solo las copropiedades de la ciudad deseada
         final listaFiltrada = data.where((e) => e['ubicacion'] == widget.ciudad).toList();
 

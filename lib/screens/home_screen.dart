@@ -1,23 +1,26 @@
-import 'package:correa_tours/providers/multimedia_providers.dart';  // Importar MultimediaProvider
+import 'dart:async';
+
+import 'package:correa_tours/providers/multimedia_providers.dart';
 import 'package:correa_tours/providers/usuarios_providers.dart';
-import 'package:correa_tours/screens/ciudadescopropiedad_screen.dart';
-import 'hotel_home.dart';
+import 'package:correa_tours/screens/CopropiedadDetailScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'info_screen.dart';
+import 'package:provider/provider.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+bool _copropiedadesCargadas = false;  // al inicio en false
+Widget? _dynamicContent; // Contenido dinámico de copropiedades
 
 String? extractYouTubeVideoId(String url) {
-  final RegExp regExp = RegExp(r'(https?://(?:www\.)?youtube\.com/shorts/)([a-zA-Z0-9_-]+)');
+  final RegExp regExp =
+      RegExp(r'(https?://(?:www\.)?youtube\.com/shorts/)([a-zA-Z0-9_-]+)');
   final match = regExp.firstMatch(url);
-
-  if (match != null) {
-    return match.group(2);
-  }
+  if (match != null) return match.group(2);
   return null;
 }
-
 
 final controller = CarouselSliderController();
 
@@ -39,10 +42,7 @@ class VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     if (videoId != null) {
       _controller = YoutubePlayerController(
         initialVideoId: videoId,
-        flags: const YoutubePlayerFlags(
-          autoPlay: true,
-          mute: true,
-        ),
+        flags: const YoutubePlayerFlags(autoPlay: true, mute: true),
       );
     } else {
       throw Exception('URL inválida de YouTube');
@@ -60,8 +60,8 @@ class VideoPlayerWidgetState extends State<VideoPlayerWidget> {
 
   @override
   void dispose() {
-    super.dispose();
     _controller.dispose();
+    super.dispose();
   }
 }
 
@@ -72,13 +72,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeState extends State<HomeScreen> {
-  final UsuariosProvider _usuariosProvider = UsuariosProvider(); // Instancia para obtener los datos del usuario
-  final MultimediaProvider _multimediaProvider = MultimediaProvider(); // Instancia para obtener los datos multimedia
-  
+  final UsuariosProvider _usuariosProvider = UsuariosProvider();
+  final MultimediaProvider _multimediaProvider = MultimediaProvider();
+
   List<Map<String, String>> heroImages = [];
   List<String> mediaItems = [];
   List<Map<String, String>> mediaItemsturismo = [];
-
   String usuarioNombre = '';
   int _selectedIndex = 0;
 
@@ -90,8 +89,7 @@ class _HomeState extends State<HomeScreen> {
     _obtenerMediaItemsTurismo();
     _obtenerMediaItems();
   }
-///////////////////////s0licitudes fetch///////////////////////////////////////////////////
-//////////////////////////s0licitudes fetch///////////////////////////////////////////////////
+
   Future<void> _fetchUserData() async {
     String? nombre = await _usuariosProvider.obtenerDatosUsuario();
     setState(() {
@@ -102,7 +100,7 @@ class _HomeState extends State<HomeScreen> {
   Future<void> _obtenerMultimediacarrusel() async {
     List<Map<String, String>> items = await _multimediaProvider.obtenerCarrusel();
     setState(() {
-      heroImages = items;  // Asignamos la lista de mapas a heroImages
+      heroImages = items;
     });
   }
 
@@ -114,17 +112,12 @@ class _HomeState extends State<HomeScreen> {
   }
 
   Future<void> _obtenerMediaItemsTurismo() async {
-  List<Map<String, String>> itemst = await _multimediaProvider.obtenerMediaItemsTurismo();
-  setState(() {
-    mediaItemsturismo = itemst; // Asegúrate de que esta variable tenga el mismo tipo
-  });
-}
+    List<Map<String, String>> items = await _multimediaProvider.obtenerMediaItemsTurismo();
+    setState(() {
+      mediaItemsturismo = items;
+    });
+  }
 
-///////////////////////fin de s0licitudes fetch///////////////////////////////////////////////////
-///////////////////////fin de s0licitudes fetch///////////////////////////////////////////////////
-
-///////////////////////  (Widget a utilizar )////////////////////////////////////////////
-////////////////////////// (Widget a utilizar )//////////////////////////////////////////
   Widget carrusel() {
     return CarouselSlider(
       options: CarouselOptions(
@@ -137,12 +130,10 @@ class _HomeState extends State<HomeScreen> {
         enlargeCenterPage: true,
       ),
       items: heroImages.map((imageItem) {
-        String imageId = imageItem['id'] ?? '';  // Obtener el id de la imagen
-        String imageLink = imageItem['link'] ?? '';  // Obtener el link detallado de la imagen
-
+        String imageId = imageItem['id'] ?? '';
+        String imageLink = imageItem['link'] ?? '';
         return GestureDetector(
           onTap: () {
-            // Navegar a la pantalla de detalles de la imagen y pasar el ID
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -161,10 +152,10 @@ class _HomeState extends State<HomeScreen> {
             ),
           ),
         );
-      }).toList(),  // Convertir a lista de widgets
+      }).toList(),
     );
   }
-  // Sección de medios (se mantiene igual)
+
   Widget _buildMediaSection() {
     return Column(
       children: mediaItems.map((link) {
@@ -190,10 +181,7 @@ class _HomeState extends State<HomeScreen> {
             margin: const EdgeInsets.all(8),
             height: 200,
             decoration: BoxDecoration(
-              image: DecorationImage(
-                image: NetworkImage(link),
-                fit: BoxFit.cover,
-              ),
+              image: DecorationImage(image: NetworkImage(link), fit: BoxFit.cover),
             ),
           );
         } else {
@@ -203,189 +191,250 @@ class _HomeState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTurismoSection() {
+ Widget _buildTurismoSection() {
+  // Si ya tenemos detalle cargado, lo mostramos
+  if (_copropiedadesCargadas && _dynamicContent != null) {
+    return _dynamicContent!;
+  }
+
+  // Mientras no haya detalle, mostramos todas las imágenes menos
+  // la de copropiedades si ya fue tocada
   return Column(
-    children: mediaItemsturismo.map((item) {
-      final String link = item['link'] ?? '';
-      final String linkdetallado = item['linkdetallado'] ?? '';
+    children: mediaItemsturismo
+        .where((item) =>
+            !(item['linkdetallado'] == 'CopropiedadScreen' &&
+              _copropiedadesCargadas))
+        .map((item) {
+      return GestureDetector(
+        onTap: () async {
+  if (_copropiedadesCargadas) return; // evita doble carga
+  final multimediaProvider =
+      Provider.of<MultimediaProvider>(context, listen: false);
+  final copropiedades = await multimediaProvider.fetchciudadescopropiedad();
+ setState(() {
+  _copropiedadesCargadas = true;
+  _dynamicContent = Column(
+    children: copropiedades.map((item) {
+      return GestureDetector(
+        onTap: () async {
+  // 1️⃣ Llamamos a la misma API de copropiedades
+  final url = Uri.parse('http://corporationservisgroup.somee.com/api/Copropiedades');
 
-      if (link.isNotEmpty && linkdetallado.isNotEmpty) {
-        return GestureDetector(
-          onTap: () {
-            print('Navegar a: $linkdetallado');
+  setState(() {
+    _copropiedadesCargadas = true; // Marcamos que ahora mostraremos el detalle
+  });
 
-            // Aquí decides a qué pantalla navegar según linkdetallado
-            Widget destino;
-            switch (linkdetallado) {
-              case 'CopropiedadScreen':
-                destino = const CiudadescopropiedadScreen();
-                break;
-              case 'HotelHomeScreen':
-                destino = const HotelHomeScreen();
-                break;
-              // Agrega más casos si tienes más pantallas
-              default:
-                destino = const Scaffold(
-                  body: Center(child: Text('Pantalla no encontrada')),
+  try {
+    final resp = await http.get(url);
+    if (resp.statusCode == 200) {
+      final List<dynamic> data = json.decode(resp.body);
+      print("/////////////////////////////////////////////////////////////////");
+        print(data);
+      // 📌 Filtra por la ciudad que desees (puedes pasarla en el item)
+      final listaFiltrada = data.where((e) => e['linkdetallado'] == item['ubicacion']).toList();
+      
+      // 2️⃣ Creamos el mismo GridView que usa CopropiedadListScreen
+      setState(() {
+        _dynamicContent = GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(12),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.75,
+          ),
+          itemCount: listaFiltrada.length,
+          itemBuilder: (context, index) {
+            final prop = listaFiltrada[index];
+            // armamos la lista de fotos como en CopropiedadListScreen
+            final fotos = [
+              prop['foto1'],
+              prop['foto2'],
+              prop['foto3'],
+              prop['foto4'],
+              prop['foto5'],
+            ].where((f) => f != null && f.toString().isNotEmpty).toList();
+            final fotoPrincipal = fotos.isNotEmpty ? fotos[0] : null;
+            if (fotoPrincipal == null) return const SizedBox();
+
+            return GestureDetector(
+              onTap: () {
+                // 👇 Navegamos a la misma pantalla de detalle si quieres
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CopropiedadDetailScreen(
+                      fotos: List<String>.from(fotos),
+                      descripcion: prop['descripcion'] ?? '',
+                    ),
+                  ),
                 );
-            }
-
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => destino),
+              },
+              child: Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                clipBehavior: Clip.hardEdge,
+                child: Image.network(
+                  fotoPrincipal,
+                  fit: BoxFit.cover,
+                ),
+              ),
             );
           },
-          child: Container(
-            margin: const EdgeInsets.all(8),
-            height: 200,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              image: DecorationImage(
-                image: NetworkImage(link),
-                fit: BoxFit.cover,
-              ),
+        );
+      });
+    } else {
+      setState(() {
+        _dynamicContent = const Center(child: Text('Error al cargar copropiedades'));
+      });
+    }
+  } catch (e) {
+    setState(() {
+      _dynamicContent = Center(child: Text('Error: $e'));
+    });
+  }
+},
+
+        child: Container(
+          margin: const EdgeInsets.all(5),
+          height: 200,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            image: DecorationImage(
+              image: NetworkImage(item['link']!),
+              fit: BoxFit.cover,
             ),
           ),
-        );
-      } else {
-        return const SizedBox.shrink();
-      }
+        ),
+      );
+    }).toList(),
+  );
+});
+        },
+        child: Container(
+          margin: const EdgeInsets.all(8),
+          height: 200,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            image: DecorationImage(
+              image: NetworkImage(item['link'] ?? ''),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      );
     }).toList(),
   );
 }
 
-//////////////////////////////Este es el cuerpo de la pantalla donde cambiamos el contenido//////////////
   Widget _buildBody() {
     switch (_selectedIndex) {
       case 0:
-        return Column(
-          children: [
-            // Carrusel (ya está en el AppBar)
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _buildMediaSection(),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
+        return SingleChildScrollView(child: _buildMediaSection());
       case 1:
-        return Column(
-          children: [
-            // Carrusel (ya está en el AppBar)
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _buildTurismoSection(),
-                  ],
-                ),
-              ),
-            ),
-          ],
+        return SingleChildScrollView(
+          child: Column(
+            children: [
+              _buildTurismoSection(),
+            ],
+          ),
         );
       case 2:
-        // Aquí puedes agregar la sección para "J.e Abogacia"
-        return const Center(
-          child: Text('J.e Abogacia content goes here'),
-        );
+        return const Center(child: Text('J.e Abogacia content goes here'));
       default:
         return Container();
     }
   }
 
-///////////////////////   fin de (Widget a utilizar )////////////////////////////////////////////
-////////////////////////// (fin de Widget a utilizar )//////////////////////////////////////////
-
-
-@override
-Widget build(BuildContext context) {
-  return SafeArea( // 👈👈👈 Agrega SafeArea para dejar espacio en la parte superior (barra de estado)
-    child: Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-      appBar: AppBar(
-        toolbarHeight: MediaQuery.of(context).size.height * 0.29, // Altura del AppBar
-        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-        flexibleSpace: Stack(
-          children: [
-            Positioned(
-              top: -30,
-              left: 0,
-              right: 0,
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height * 0.4, // Altura del carrusel
-                width: MediaQuery.of(context).size.width,
-                child: carrusel(), // Aquí está el carrusel
-              ),
-            ),
-            Positioned(
-              top: 0,
-              left: 5,
-              child: Text(
-                usuarioNombre.isNotEmpty ? usuarioNombre : "bazz",
-                style: GoogleFonts.playfairDisplay(
-                  color: Colors.black,
-                  fontSize: 25,
-                  fontWeight: FontWeight.bold,
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          toolbarHeight: MediaQuery.of(context).size.height * 0.29,
+          backgroundColor: Colors.white,
+          flexibleSpace: Stack(
+            children: [
+              Positioned(
+                top: -30,
+                left: 0,
+                right: 0,
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.4,
+                  width: MediaQuery.of(context).size.width,
+                  child: carrusel(),
                 ),
               ),
-            ),
-            Positioned(
-              top: 5,
-              right: 5,
-              child: Container(
-                width: 60,
-                height: 60,
-                decoration: const BoxDecoration(
-                  color: Colors.blue,
-                  shape: BoxShape.circle,
-                ),
-                child: Image.network(
-                  'https://i.ibb.co/whg7KFXf/corporation-removebg-preview.png',
-                  fit: BoxFit.cover,
+              Positioned(
+                top: 0,
+                left: 5,
+                child: Text(
+                  usuarioNombre.isNotEmpty ? usuarioNombre : "bazz",
+                  style: GoogleFonts.playfairDisplay(
+                    color: Colors.black,
+                    fontSize: 25,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
-          ],
+              Positioned(
+                top: 5,
+                right: 5,
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: const BoxDecoration(
+                    color: Colors.blue,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Image.network(
+                    'https://i.ibb.co/whg7KFXf/corporation-removebg-preview.png',
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      body: Column(
-        children: [
-          // Barra de navegación
-          Padding(
-            padding: const EdgeInsets.all(0.0),
-            child: BottomNavigationBar(
+        body: Column(
+          children: [
+            BottomNavigationBar(
               currentIndex: _selectedIndex,
               onTap: (index) {
-                setState(() {
-                  _selectedIndex = index;  // Cambiar el índice al seleccionar un ítem
-                });
-              },
+  setState(() {
+    _selectedIndex = index;
+    if (_selectedIndex == 1) {
+      // 👈 Cada vez que entras a Turismo, reinicia el estado
+      _copropiedadesCargadas = false;
+      _dynamicContent = null;
+    } else {
+      // Al salir de Turismo también limpia por si acaso
+      _dynamicContent = null;
+    }
+  });
+},
               items: const [
                 BottomNavigationBarItem(icon: Icon(Icons.home), label: "Casa"),
                 BottomNavigationBarItem(icon: Icon(Icons.surfing_sharp), label: "Turismo"),
                 BottomNavigationBarItem(icon: Icon(Icons.monetization_on), label: "Formacion"),
               ],
             ),
-          ),
-          // Cuerpo con el contenido que cambia según el índice
-          Expanded(child: _buildBody()),
-          // Pie de página u otros widgets
-          Container(
-            color: Colors.grey[200],
-            child: const Text(
-              '© 2025 Mi Empresa | Todos los derechos reservados',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.black),
+            Expanded(child: _buildBody()),
+            Container(
+              color: Colors.grey[200],
+              child: const Text(
+                '© 2025 Mi Empresa | Todos los derechos reservados',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.black),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 }

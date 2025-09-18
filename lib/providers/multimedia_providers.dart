@@ -139,6 +139,28 @@ Future<List<Map<String, dynamic>>> obtenerMediaItemsCopropiedad() async {
 }
 
 
+
+
+  // Función que trae los items de tu API
+  Future<List<Map<String, String>>> fetchciudadescopropiedad() async {
+    final url = Uri.parse(
+        'http://corporationservisgroup.somee.com/api/Multimedias/ciudadescopropiedades');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map<Map<String, String>>((e) {
+        return {
+          'link': e['link'] ?? '',
+          'linkdetallado': e['linkdetallado'] ?? '',
+        };
+      }).where((m) => m['link']!.isNotEmpty).toList();
+    } else {
+      throw Exception('Error al cargar copropiedades');
+    }
+  }
+
+
+
 }
 
 
