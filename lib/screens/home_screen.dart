@@ -268,6 +268,7 @@ class _HomeState extends State<HomeScreen> {
                     builder: (_) => CopropiedadDetailScreen(
                       fotos: List<String>.from(fotos),
                       descripcion: prop['descripcion'] ?? '',
+                       copropiedadId: prop['id'],
                     ),
                   ),
                 );
